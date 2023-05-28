@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
 namespace MyLibrary
@@ -32,8 +33,8 @@ namespace MyLibrary
 
         public Dictionary<string, int> CountWords2(string text)
         {
-            // создаем словарь
-            Dictionary<string, int> dictionary = new Dictionary<string, int>();
+            // создаем ConcurrentDictionary
+            ConcurrentDictionary<string, int> dictionary = new ConcurrentDictionary<string, int>();
 
             // разбиваем текст на слова и помещаем их в массив
             string[] words = text.Split(new[] { ' ', ',', '.', ':', ';', '!', '?', '(', ')', '"', '-', 'I', 'V', 'X', '/', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0' }, StringSplitOptions.RemoveEmptyEntries);
@@ -46,24 +47,15 @@ namespace MyLibrary
             {
                 tasks.Add(Task.Factory.StartNew(() =>
                 {
-                    lock (dictionary) // блокируем доступ к словарю
-                    {
-                        if (dictionary.ContainsKey(word))
-                        {
-                            dictionary[word]++;
-                        }
-                        else
-                        {
-                            dictionary.Add(word, 1);
-                        }
-                    }
+                    dictionary.AddOrUpdate(word, 1, (key, oldValue) => oldValue + 1);
                 }));
             }
 
             // ожидаем завершения всех задач
             Task.WaitAll(tasks.ToArray());
 
-            return dictionary; // возвращаем результат
+            return new Dictionary<string, int>(dictionary); // создаем обычный словарь из ConcurrentDictionary и возвращаем результат
         }
     }
 }
+
